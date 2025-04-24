@@ -1,7 +1,9 @@
 from flask import Flask, request, jsonify
 from openpyxl import load_workbook
+from flask_cors import CORS
 
 app = Flask(__name__)
+CORS(app)  # Abilita CORS per tutte le rotte
 
 EXCEL_PATH = "template.xlsx"
 
