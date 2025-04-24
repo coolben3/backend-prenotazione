@@ -3,14 +3,16 @@ from flask_cors import CORS
 from openpyxl import load_workbook
 import csv
 import os
+import shutil
 
 app = Flask(__name__)
-CORS(app)  # 🔓 Consente richieste da domini esterni (GitHub Pages)
+CORS(app)
 
 EXCEL_PATH = "template.xlsx"
+BACKUP_PATH = "backup_template.xlsx"
 CSV_PATH = "storico.csv"
 
-# Mappatura campi → celle Excel
+# Campi del form → celle Excel
 CELL_MAP = {
     "nome_cognome": "B6",
     "tratta": "E13",
@@ -33,8 +35,11 @@ def ricevi_dati():
         return jsonify({"error": "Nessun dato ricevuto"}), 400
 
     try:
-        # ✅ Scrive nei campi specifici del file Excel
-        wb = load_workbook(EXCEL_PATH)
+        # 🔁 Backup automatico
+        shutil.copy(EXCEL_PATH, BACKUP_PATH)
+
+        # 📥 Scrive nel template originale (con formule attive)
+        wb = load_workbook(EXCEL_PATH, keep_vba=True)  # usa keep_vba=True se hai macro
         ws = wb.active
 
         for campo, cella in CELL_MAP.items():
@@ -44,7 +49,7 @@ def ricevi_dati():
 
         wb.save(EXCEL_PATH)
 
-        # ✅ Salva i dati anche nello storico CSV
+        # 📝 Salva anche lo storico in CSV
         aggiungi_a_csv(data)
 
         return jsonify({"message": "Dati salvati con successo ✅"}), 200
@@ -69,7 +74,7 @@ def scarica_excel():
             EXCEL_PATH,
             mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
             as_attachment=True,
-            download_name='template.xlsx'
+            download_name='biglietto_compilato.xlsx'
         )
     except Exception as e:
         return jsonify({"error": "Errore durante il download", "details": str(e)}), 500
