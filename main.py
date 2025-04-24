@@ -1,13 +1,16 @@
-from flask import Flask, request, jsonify
-from openpyxl import load_workbook
+from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
+from openpyxl import load_workbook
+import csv
+import os
 
 app = Flask(__name__)
-CORS(app)  # Abilita CORS per tutte le rotte
+CORS(app)  # 🔓 Consente richieste da domini esterni (GitHub Pages)
 
 EXCEL_PATH = "template.xlsx"
+CSV_PATH = "storico.csv"
 
-# Mappatura campi → celle
+# Mappatura campi → celle Excel
 CELL_MAP = {
     "nome_cognome": "B6",
     "tratta": "E13",
@@ -30,6 +33,7 @@ def ricevi_dati():
         return jsonify({"error": "Nessun dato ricevuto"}), 400
 
     try:
+        # ✅ Scrive nei campi specifici del file Excel
         wb = load_workbook(EXCEL_PATH)
         ws = wb.active
 
@@ -40,12 +44,23 @@ def ricevi_dati():
 
         wb.save(EXCEL_PATH)
 
+        # ✅ Salva i dati anche nello storico CSV
+        aggiungi_a_csv(data)
+
         return jsonify({"message": "Dati salvati con successo ✅"}), 200
 
     except Exception as e:
-        return jsonify({"error": "Errore durante la scrittura su Excel", "details": str(e)}), 500
+        return jsonify({"error": "Errore durante la scrittura", "details": str(e)}), 500
 
-from flask import send_file
+def aggiungi_a_csv(data):
+    headers = list(data.keys())
+    file_esiste = os.path.isfile(CSV_PATH)
+
+    with open(CSV_PATH, mode='a', newline='', encoding='utf-8') as file:
+        writer = csv.DictWriter(file, fieldnames=headers)
+        if not file_esiste:
+            writer.writeheader()
+        writer.writerow(data)
 
 @app.route("/download", methods=["GET"])
 def scarica_excel():
@@ -59,6 +74,17 @@ def scarica_excel():
     except Exception as e:
         return jsonify({"error": "Errore durante il download", "details": str(e)}), 500
 
+@app.route("/storico", methods=["GET"])
+def scarica_csv():
+    try:
+        return send_file(
+            CSV_PATH,
+            mimetype='text/csv',
+            as_attachment=True,
+            download_name='storico.csv'
+        )
+    except Exception as e:
+        return jsonify({"error": "Errore durante il download del CSV", "details": str(e)}), 500
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=3000)
