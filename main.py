@@ -45,5 +45,20 @@ def ricevi_dati():
     except Exception as e:
         return jsonify({"error": "Errore durante la scrittura su Excel", "details": str(e)}), 500
 
+from flask import send_file
+
+@app.route("/download", methods=["GET"])
+def scarica_excel():
+    try:
+        return send_file(
+            EXCEL_PATH,
+            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            as_attachment=True,
+            download_name='template.xlsx'
+        )
+    except Exception as e:
+        return jsonify({"error": "Errore durante il download", "details": str(e)}), 500
+
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=3000)
